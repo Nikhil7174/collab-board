@@ -1,0 +1,74 @@
+.DottedBg {
+  --dot-bg: black;
+  --dot-color: #00f0ff;
+  --dot-size: 3px;
+  --dot-space: 70px;
+
+  background: linear-gradient(
+        90deg,
+        var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+        transparent 2%
+      )
+      center / var(--dot-space) var(--dot-space),
+    linear-gradient(
+        var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+        transparent 2%
+      )
+      center / var(--dot-space) var(--dot-space),
+    var(--dot-color);
+
+  animation: moveDots 10s linear infinite; /* Animation for continuous random movement */
+}
+
+@keyframes moveDots {
+  0% {
+    background-position: 0 0, 0 0, 0 0; /* Initial position */
+  }
+  25% {
+    background-position: randomX randomY, randomX randomY, 0 0; /* Random direction at 25% */
+  }
+  50% {
+    background-position: randomX randomY, randomX randomY, 0 0; /* Random direction at 50% */
+  }
+  75% {
+    background-position: randomX randomY, randomX randomY, 0 0; /* Random direction at 75% */
+  }
+  100% {
+    background-position: randomX randomY, randomX randomY, 0 0; /* Random direction at 100% */
+  }
+}
+
+@keyframes randomX {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: 100%;
+  }
+}
+
+@keyframes randomY {
+  from {
+    background-position-y: 0;
+  }
+  to {
+    background-position-y: 100%;
+  }
+}
+
+@font-face {
+  font-family: "Crotah free version";
+  src: url("../../public/Crotahfreeversion-Italic.ttf") format("truetype");
+  font-display: swap;
+}
+
+.Heading {
+  color: white;
+  font-size: 70px;
+  font-family: "Crotah free version";
+}
+@media (max-width: 600px) {
+  .Heading {
+    font-size: 50px;
+  }
+}

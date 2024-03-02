@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: "Crotah free version";
+  src: url("../public/Crotahfreeversion-Italic.ttf") format("truetype");
+  font-display: swap;
+}
