@@ -1,21 +1,33 @@
 import React, { useRef, useEffect, useState } from "react";
 import io from "socket.io-client";
-
+import { v4 as uuidv4 } from "uuid"; // Import uuid library
 interface MyBoard {
   brushColor: string;
   brushSize: number;
+  handleUuid: Function;
 }
 
 const Board: React.FC<MyBoard> = (props) => {
-  const { brushColor, brushSize } = props;
+  const { brushColor, brushSize, handleUuid } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io("http://localhost:5000");
-    console.log(newSocket, "Connected to socket");
+    // const newSocket = io("http://localhost:5000");
+
+    // Generate a unique room ID
+    // const roomID = uuidv4();
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomID = urlParams.get("roomID") || uuidv4(); // Use the provided roomID or generate a new one
+
+    // Connect to the socket with the room ID as a query parameter
+    const newSocket = io("http://localhost:5000", {
+      query: { roomID },
+    });
+    console.log(newSocket, "Connected to socket", " room uuid ", roomID);
     setSocket(newSocket);
+    handleUuid(roomID);
   }, []);
 
   useEffect(() => {
@@ -126,8 +138,8 @@ const Board: React.FC<MyBoard> = (props) => {
   return (
     <canvas
       ref={canvasRef}
-      width={windowSize[0] > 600 ? 600 : 300}
-      height={windowSize[1] > 400 ? 400 : 200}
+      width={windowSize[0] > 600 ? 1200 : 900}
+      height={windowSize[1] > 400 ? 1000 : 800}
       style={{ backgroundColor: "white" }}
     />
   );
