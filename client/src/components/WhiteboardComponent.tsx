@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import io from "socket.io-client";
 import { v4 as uuidv4 } from "uuid"; // Import uuid library
+
 interface MyBoard {
   brushColor: string;
   brushSize: number;
@@ -10,7 +11,7 @@ interface MyBoard {
 const Board: React.FC<MyBoard> = (props) => {
   const { brushColor, brushSize, handleUuid } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
+  const [CollabID, setCollabID] = useState(null);
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ const Board: React.FC<MyBoard> = (props) => {
     // const roomID = uuidv4();
     const urlParams = new URLSearchParams(window.location.search);
     const roomID = urlParams.get("roomID") || uuidv4(); // Use the provided roomID or generate a new one
-
+    setCollabID(roomID);
     // Connect to the socket with the room ID as a query parameter
     const newSocket = io("http://localhost:5000", {
       query: { roomID },
@@ -135,13 +136,57 @@ const Board: React.FC<MyBoard> = (props) => {
     };
   }, []);
 
+  const canvasRefer = useRef(null);
+  const windowSizeCurr = [window.innerWidth, window.innerHeight];
+  const [snapshotURL, setSnapshotURL] = useState(null);
+
+  // Function to capture the canvas content
+  const takeSnapshot = () => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const image = new Image();
+      image.src = canvas.toDataURL("image/png");
+
+      // Set the URL of the snapshot image
+      setSnapshotURL(image.src);
+      console.log(image.src);
+    } else {
+      console.error("Canvas reference is not yet available.");
+    }
+  };
+  // Function to reset the snapshot URL
+  const resetSnapshot = () => {
+    setSnapshotURL(null);
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={windowSize[0] > 600 ? 1200 : 900}
-      height={windowSize[1] > 400 ? 1000 : 800}
-      style={{ backgroundColor: "white" }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        width={windowSize[0] > 600 ? 1200 : 900}
+        height={windowSize[1] > 400 ? 1000 : 800}
+        style={{ backgroundColor: "white" }}
+      />
+      <div className="flex items-center justify-center gap-3">
+        <button
+          onClick={takeSnapshot}
+          className="bg-green-600 py-2 px-3 text-white mt-4"
+        >
+          Take Snapshot
+        </button>
+        {snapshotURL && (
+          <div>
+            <a
+              className="bg-green-600 py-2 px-3 text-white"
+              href={snapshotURL}
+              download={`CanvasSnapshot${CollabID}`}
+            >
+              Download Snapshot
+            </a>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
