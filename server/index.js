@@ -12,7 +12,7 @@
 
 const { Server } = require("socket.io");
 const io = new Server({
-  cors: "http://localhost:5173/",
+  cors: "https://collab-board-delta.vercel.app/",
 });
 
 io.on("connection", function (socket) {
