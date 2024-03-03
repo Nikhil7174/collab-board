@@ -26,7 +26,7 @@ const Board: React.FC<MyBoard> = (props) => {
     const roomID = urlParams.get("roomID") || uuidv4(); // Use the provided roomID or generate a new one
     setCollabID(roomID);
     // Connect to the socket with the room ID as a query parameter
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io("https://collab-board.onrender.com", {
       query: { roomID },
     });
     console.log(newSocket, "Connected to socket", " room uuid ", roomID);
