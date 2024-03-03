@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import io from "socket.io-client";
 import { v4 as uuidv4 } from "uuid"; // Import uuid library
+import axios from "axios";
 
 interface MyBoard {
   brushColor: string;
@@ -159,13 +160,52 @@ const Board: React.FC<MyBoard> = (props) => {
     setSnapshotURL(null);
   };
 
+  const [image, setImage] = useState(null);
+  const [processedImage, setProcessedImage] = useState(null);
+  const [recognizedText, setRecognizedText] = useState("");
+  const [translatedText, setTranslatedText] = useState("");
+
+  const handleImageChange = (e) => {
+    setImage(e.target.files[0]);
+  };
+
+  const handleSubmit = async () => {
+    const formData = new FormData();
+    formData.append("image", image);
+    console.log(image);
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5001/recognize_text",
+        formData,
+        {
+          responseType: "arraybuffer",
+        }
+      );
+
+      // Set processed image
+      const processedImageBlob = new Blob([response.data], {
+        type: "image/png",
+      });
+      const processedImageUrl = URL.createObjectURL(processedImageBlob);
+      setProcessedImage(processedImageUrl);
+      const responseData = await response.json();
+      console.log(responseData.recognizedText);
+      console.log(responseData.recognizedText);
+      setRecognizedText(responseData.recognizedText);
+      setTranslatedText(responseData.translatedText);
+    } catch (error) {
+      console.error("Er ror:", error);
+    }
+  };
+
   return (
     <>
       <canvas
         ref={canvasRef}
         width={windowSize[0] > 600 ? 1200 : 900}
         height={windowSize[1] > 400 ? 1000 : 800}
-        style={{ backgroundColor: "white" }}
+        style={{ backgroundColor: "blue" }}
       />
       <div className="flex items-center justify-center gap-3">
         <button
@@ -185,6 +225,25 @@ const Board: React.FC<MyBoard> = (props) => {
             </a>
           </div>
         )}
+        <div>
+          <input type="file" onChange={handleImageChange} />
+          <button className="bg-orange-400" onClick={handleSubmit}>
+            Process Image
+          </button>
+          {processedImage && <img src={processedImage} alt="Processed Image" />}
+          {recognizedText && (
+            <div>
+              <h2>Recognized Text:</h2>
+              <p>{recognizedText}</p>
+            </div>
+          )}
+          {translatedText && (
+            <div>
+              <h2>Translated Text:</h2>
+              <p>{translatedText}</p>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
