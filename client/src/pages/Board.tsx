@@ -16,7 +16,7 @@ const CanvasDrawing = () => {
     setUuid(id);
   };
 
-  const baseUrl = "http://localhost:5173/board";
+  const baseUrl = "https://collab-board-delta.vercel.app/board";
 
   const url = baseUrl + "?roomID=" + uuid;
 
