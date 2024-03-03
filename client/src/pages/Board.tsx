@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import WhiteBoard from "../components/WhiteboardComponent";
 
 const CanvasDrawing = () => {
-  const [brushColor, setBrushColor] = useState("black");
+  const [brushColor, setBrushColor] = useState("white");
   const [brushSize, setBrushSize] = useState<number>(5);
 
   const [uuid, setUuid] = useState<string>("");
@@ -21,17 +21,17 @@ const CanvasDrawing = () => {
   const url = baseUrl + "?roomID=" + uuid;
 
   return (
-    <div className="App bg-black flex flex-col items-center">
+    <div className="App bg-gray-800 flex flex-col items-center">
       <div className="font-semibold text-5xl m-5 text-white font-sans">
         Collaborative Whiteboard
       </div>
-      <div className="items-center justify-center mb-9">
+      <div className="items-center justify-center mb-9 rounded-3xl">
         <WhiteBoard
           brushColor={brushColor}
           brushSize={brushSize}
           handleUuid={handleUuid}
         />
-        <div className="tools flex flex-row p-5 space-x-4 bg-black text-white justify-between items-center">
+        <div className="tools flex flex-row p-5 space-x-4 bg-black text-white justify-between items-center rounded-xl">
           <div className="flex flex-row justify-center items-center gap-5">
             <div>
               <span className="text-center">Color : </span>
@@ -56,7 +56,7 @@ const CanvasDrawing = () => {
           </div>
           <div>
             <button
-              className="bg-green-600 py-2 px-3 text-white"
+              className="bg-green-600 rounded-lg py-2 px-3 text-white"
               onClick={() => setLink(true)}
             >
               Generate Url
@@ -65,7 +65,7 @@ const CanvasDrawing = () => {
         </div>
         <div id="url">
           <div
-            className={`p-4 bg-[#faebd7] text-black ${
+            className={`p-4 bg-[#faebd7] rounded-xl text-black ${
               link ? "block" : "hidden"
             }`}
           >
