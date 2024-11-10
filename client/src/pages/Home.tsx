@@ -1,10 +1,17 @@
 //@ts-nocheck
 import React from "react";
 import "./Home.css";
+import { Helmet } from "react-helmet";
 
 const Home = () => {
   return (
     <div className="bg-gradient-to-r from-indigo-900 to bg-gray-900">
+      <Helmet>
+        <meta
+          name="google-site-verification"
+          content="LTEslH9dKKs5wwLu8JhLPM4jiI1qE-M05wJUK2eKZnU"
+        />
+      </Helmet>
       <h1 className="Heading text-blue text-center">
         COLLABORATIVE WHITEBOARD
       </h1>
