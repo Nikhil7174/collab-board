@@ -50,5 +50,5 @@ https://collab-board-delta.vercel.app/
 - **Persistent Boards** to save and reload previous sessions.  
 - **Voice-to-Text Support** for additional accessibility.
 
-## The server where the ml model had been deployed is currently down. So the image processing(extracting text from board's img and converting it to the desired language is not available in the deployed website.) To test the ml model the python server can be run locally.
+## **The server where the ml model had been deployed is currently down. So the image processing(extracting text from board's img and converting it to the desired language is not available in the deployed website.) To test the ml model the python server can be run locally.
 
