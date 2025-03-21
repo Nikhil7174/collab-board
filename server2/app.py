@@ -6,6 +6,7 @@ import numpy as np
 import io
 from flask_cors import CORS
 from googletrans import Translator
+import os
 
 translator = Translator()
 
@@ -25,10 +26,16 @@ def draw_text_boxes(img, data, translated_text):
     
     return img
 
+@app.route('/')
+def home():
+    return "Welcome to the Flask OCR and Translation API!"
+
 @app.route('/recognize_text', methods=['POST'])
 def process_image():
-    file = request.files['image']
-    print(file)
+    file = request.files.get('image')
+    if not file:
+        return jsonify({'error': 'No image file provided'}), 400
+
     img_bytes = file.read()
     nparr = np.frombuffer(img_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -41,19 +48,22 @@ def process_image():
         if float(data['conf'][i]) > 30:
             recognized_text += data['text'][i] + ' '
     
-    transtext = translator.translate(recognized_text, dest='de').text
+    transtext = translator.translate(recognized_text.strip(), dest='de').text
     img_with_boxes = draw_text_boxes(img.copy(), data, transtext)
 
     retval, buffer = cv2.imencode('.png', img_with_boxes)
     img_bytes = io.BytesIO(buffer)
 
+    # Send both image and text as separate responses
     response_data = {
         'recognizedText': recognized_text,
         'translatedText': transtext,
     }
-    response = jsonify(response_data)
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return send_file(img_bytes, mimetype='image/png'), 200, response_data
+    
+    # Save the processed image temporarily for sending
+    img_bytes.seek(0)
+    return send_file(img_bytes, mimetype='image/png')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get('PORT', 5000))  # Use PORT from environment or default to 5000
+    app.run(debug=True, host='0.0.0.0', port=port)
