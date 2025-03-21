@@ -177,13 +177,12 @@ const Board: React.FC<MyBoard> = (props) => {
     console.log(image);
 
     try {
-      const response = await axios.post(
-        "http://localhost:5001/recognize_text",
-        formData,
-        {
-          responseType: "arraybuffer",
-        }
-      );
+     const response = await axios.post(
+  "https://collab-board-2.onrender.com/recognize_text", 
+  formData,
+  { responseType: "arraybuffer" }
+);
+
 
       // Set processed image
       const processedImageBlob = new Blob([response.data], {
