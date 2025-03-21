@@ -1,9 +1,10 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, jsonify
 import cv2
 import pytesseract
 from pytesseract import Output
 import numpy as np
 import io
+import base64
 from flask_cors import CORS
 from googletrans import Translator
 import os
@@ -20,9 +21,14 @@ def draw_text_boxes(img, data, translated_text):
         if float(data['conf'][i]) > 30:
             x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
             translated_word = translated_words.pop(0) if translated_words else ''
+            
+            # Ensure text encoding is handled properly
             translated_word = translated_word.encode('utf-8').decode('utf-8')
-            img = cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            img = cv2.putText(img, translated_word, (x, y + h + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+
+            # Draw rectangle and translated text
+            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.putText(img, translated_word, (x, y + h + 20), cv2.FONT_HERSHEY_SIMPLEX, 
+                        0.7, (0, 255, 0), 2, cv2.LINE_AA)
     
     return img
 
@@ -36,33 +42,39 @@ def process_image():
     if not file:
         return jsonify({'error': 'No image file provided'}), 400
 
+    # Read image from request
     img_bytes = file.read()
     nparr = np.frombuffer(img_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    # OCR configuration
     myconfig = r"--psm 6 --oem 3"
     data = pytesseract.image_to_data(img, config=myconfig, output_type=Output.DICT)
     
+    # Extract recognized text
     recognized_text = ''
-    amount_boxes = len(data['text'])
-    for i in range(amount_boxes):
+    for i in range(len(data['text'])):
         if float(data['conf'][i]) > 30:
             recognized_text += data['text'][i] + ' '
     
+    # Translate text
     transtext = translator.translate(recognized_text.strip(), dest='de').text
+
+    # Draw bounding boxes with translated text
     img_with_boxes = draw_text_boxes(img.copy(), data, transtext)
 
-    retval, buffer = cv2.imencode('.png', img_with_boxes)
-    img_bytes = io.BytesIO(buffer)
+    # Encode image to Base64
+    _, buffer = cv2.imencode('.png', img_with_boxes)
+    img_base64 = base64.b64encode(buffer).decode('utf-8')
 
-    # Send both image and text as separate responses
+    # Return response as JSON
     response_data = {
-        'recognizedText': recognized_text,
-        'translatedText': transtext,
+        'recognizedText': recognized_text.strip(),
+        'translatedText': transtext.strip(),
+        'image': img_base64  # Base64 string of the processed image
     }
     
-    # Save the processed image temporarily for sending
-    img_bytes.seek(0)
-    return send_file(img_bytes, mimetype='image/png')
+    return jsonify(response_data)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))  # Use PORT from environment or default to 5000
