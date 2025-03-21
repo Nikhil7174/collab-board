@@ -10,7 +10,6 @@ from googletrans import Translator
 import os
 
 translator = Translator()
-
 app = Flask(__name__)
 CORS(app, resources={r"/recognize_text": {"origins": "*"}})
 
@@ -21,9 +20,6 @@ def draw_text_boxes(img, data, translated_text):
         if float(data['conf'][i]) > 30:
             x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
             translated_word = translated_words.pop(0) if translated_words else ''
-            
-            # Ensure text encoding is handled properly
-            translated_word = translated_word.encode('utf-8').decode('utf-8')
 
             # Draw rectangle and translated text
             cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -48,17 +44,14 @@ def process_image():
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
     # OCR configuration
-    myconfig = r"--psm 6 --oem 3"
+    myconfig = r"--psm 3 --oem 3"
     data = pytesseract.image_to_data(img, config=myconfig, output_type=Output.DICT)
     
     # Extract recognized text
-    recognized_text = ''
-    for i in range(len(data['text'])):
-        if float(data['conf'][i]) > 30:
-            recognized_text += data['text'][i] + ' '
-    
-    # Translate text
-    transtext = translator.translate(recognized_text.strip(), dest='de').text
+    recognized_text = ' '.join([data['text'][i] for i in range(len(data['text'])) if float(data['conf'][i]) > 30]).strip()
+
+    # Translate text (Handle empty text)
+    transtext = translator.translate(recognized_text, dest='de').text if recognized_text else ""
 
     # Draw bounding boxes with translated text
     img_with_boxes = draw_text_boxes(img.copy(), data, transtext)
@@ -69,8 +62,8 @@ def process_image():
 
     # Return response as JSON
     response_data = {
-        'recognizedText': recognized_text.strip(),
-        'translatedText': transtext.strip(),
+        'recognizedText': recognized_text,
+        'translatedText': transtext,
         'image': img_base64  # Base64 string of the processed image
     }
     
@@ -78,4 +71,4 @@ def process_image():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))  # Use PORT from environment or default to 5000
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)
