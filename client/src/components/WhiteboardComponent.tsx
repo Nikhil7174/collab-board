@@ -127,7 +127,7 @@ const Board: React.FC<MyBoard> = ({ brushColor, brushSize, handleUuid }) => {
 
     try {
       const response = await axios.post(
-        "https://collab-board-2.onrender.com/recognize_text",
+        "https://collab-board-1-3hd3.onrender.com",
         formData,
         { responseType: "json" }
       );
