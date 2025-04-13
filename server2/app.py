@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify
 import cv2
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_PATH", "/home/render/tesseract/bin/tesseract")
+pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 from pytesseract import Output
 import numpy as np
 import io
