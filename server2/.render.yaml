@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: flask-ocr-api
+    env: docker
+    repo: https://github.com/your-username/your-repo-name  # <-- replace this with your actual repo
+    region: oregon  # or any other region
+    plan: free
+    branch: main  # or your branch name
+    rootDir: server2  # <- where your Dockerfile lives
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: TESSERACT_PATH
+        value: /usr/bin/tesseract  # This may change based on the Docker image setup
