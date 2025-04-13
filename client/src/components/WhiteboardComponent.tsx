@@ -1,208 +1,148 @@
 //@ts-nocheck
 import React, { useRef, useEffect, useState } from "react";
 import io from "socket.io-client";
-import { v4 as uuidv4 } from "uuid"; // Import uuid library
+import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import "./WhiteBoard.css";
 
 interface MyBoard {
   brushColor: string;
   brushSize: number;
-  handleUuid: Function;
+  handleUuid: (uuid: string) => void;
 }
 
-const Board: React.FC<MyBoard> = (props) => {
-  const { brushColor, brushSize, handleUuid } = props;
+const Board: React.FC<MyBoard> = ({ brushColor, brushSize, handleUuid }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [CollabID, setCollabID] = useState(null);
+  const [CollabID, setCollabID] = useState<string | null>(null);
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // const newSocket = io("http://localhost:5000");
-
-    // Generate a unique room ID
-    // const roomID = uuidv4();
     const urlParams = new URLSearchParams(window.location.search);
-    const roomID = urlParams.get("roomID") || uuidv4(); // Use the provided roomID or generate a new one
+    const roomID = urlParams.get("roomID") || uuidv4();
     setCollabID(roomID);
-    // Connect to the socket with the room ID as a query parameter
-    const newSocket = io("http://localhost:5000", {
-      query: { roomID },
-    });
-    console.log(newSocket, "Connected to socket", " room uuid ", roomID);
+    const newSocket = io("https://collab-board.onrender.com", { query: { roomID } });
+    console.log("Connected to socket:", newSocket, " Room ID:", roomID);
     setSocket(newSocket);
     handleUuid(roomID);
+    return () => newSocket.disconnect(); // Cleanup socket on unmount
   }, []);
 
   useEffect(() => {
-    if (socket) {
-      // Event listener for receiving canvas data from the socket
-      socket.on("canvasImage", (data) => {
-        // Create an image object from the data URL
-        const image = new Image();
-        image.src = data;
-
+    if (!socket) return;
+    socket.on("canvasImage", (data) => {
+      const image = new Image();
+      image.src = data;
+      image.onload = () => {
         const canvas = canvasRef.current;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        const ctx = canvas.getContext("2d");
-        // Draw the image onto the canvas
-        image.onload = () => {
-          ctx.drawImage(image, 0, 0);
-        };
-      });
-    }
+        const ctx = canvas?.getContext("2d");
+        if (ctx) ctx.drawImage(image, 0, 0);
+      };
+    });
+    return () => socket.off("canvasImage"); // Cleanup listener
   }, [socket]);
 
-  // Function to start drawing
   useEffect(() => {
-    // Variables to store drawing state
     let isDrawing = false;
-    let lastX = 0;
-    let lastY = 0;
-    const startDrawing = (e: { offsetX: number; offsetY: number }) => {
-      isDrawing = true;
+    let lastX = 0,
+      lastY = 0;
 
-      console.log(`drawing started`, brushColor, brushSize);
+    const startDrawing = (e: MouseEvent) => {
+      isDrawing = true;
       [lastX, lastY] = [e.offsetX, e.offsetY];
     };
 
-    // Function to draw
-    const draw = (e: { offsetX: number; offsetY: number }) => {
+    const draw = (e: MouseEvent) => {
       if (!isDrawing) return;
-
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas?.getContext("2d");
       if (ctx) {
+        ctx.strokeStyle = brushColor;
+        ctx.lineWidth = brushSize;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(lastX, lastY);
         ctx.lineTo(e.offsetX, e.offsetY);
         ctx.stroke();
       }
-
       [lastX, lastY] = [e.offsetX, e.offsetY];
     };
 
-    // Function to end drawing
     const endDrawing = () => {
-      const canvas = canvasRef.current;
-      const dataURL = canvas.toDataURL(); // Get the data URL of the canvas content
-
-      // Send the dataURL or image data to the socket
-      // console.log('drawing ended')
-      if (socket) {
-        socket.emit("canvasImage", dataURL);
-        console.log("drawing ended");
-      }
       isDrawing = false;
+      const canvas = canvasRef.current;
+      if (canvas && socket) {
+        socket.emit("canvasImage", canvas.toDataURL());
+      }
     };
 
-    const canvas: HTMLCanvasElement | null = canvasRef.current;
-    const ctx = canvasRef.current?.getContext("2d");
-
-    // Set initial drawing styles
-    if (ctx) {
-      ctx.strokeStyle = brushColor;
-      ctx.lineWidth = brushSize;
-
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener("mousedown", startDrawing);
+      canvas.addEventListener("mousemove", draw);
+      canvas.addEventListener("mouseup", endDrawing);
+      canvas.addEventListener("mouseout", endDrawing);
     }
-    // Event listeners for drawing
-    canvas.addEventListener("mousedown", startDrawing);
-    canvas.addEventListener("mousemove", draw);
-    canvas.addEventListener("mouseup", endDrawing);
-    canvas.addEventListener("mouseout", endDrawing);
 
     return () => {
-      // Clean up event listeners when component unmounts
-      canvas.removeEventListener("mousedown", startDrawing);
-      canvas.removeEventListener("mousemove", draw);
-      canvas.removeEventListener("mouseup", endDrawing);
-      canvas.removeEventListener("mouseout", endDrawing);
+      if (canvas) {
+        canvas.removeEventListener("mousedown", startDrawing);
+        canvas.removeEventListener("mousemove", draw);
+        canvas.removeEventListener("mouseup", endDrawing);
+        canvas.removeEventListener("mouseout", endDrawing);
+      }
     };
   }, [brushColor, brushSize, socket]);
 
-  const [windowSize, setWindowSize] = useState([
-    window.innerWidth,
-    window.innerHeight,
-  ]);
+  const [windowSize, setWindowSize] = useState([window.innerWidth, window.innerHeight]);
 
   useEffect(() => {
-    const handleWindowResize = () => {
-      setWindowSize([window.innerWidth, window.innerHeight]);
-    };
-
+    const handleWindowResize = () => setWindowSize([window.innerWidth, window.innerHeight]);
     window.addEventListener("resize", handleWindowResize);
-
-    return () => {
-      window.removeEventListener("resize", handleWindowResize);
-    };
+    return () => window.removeEventListener("resize", handleWindowResize);
   }, []);
 
-  const canvasRefer = useRef(null);
-  const windowSizeCurr = [window.innerWidth, window.innerHeight];
-  const [snapshotURL, setSnapshotURL] = useState(null);
-
-  // Function to capture the canvas content
+  const [snapshotURL, setSnapshotURL] = useState<string | null>(null);
   const takeSnapshot = () => {
     if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const image = new Image();
-      image.src = canvas.toDataURL("image/png");
-
-      // Set the URL of the snapshot image
-      setSnapshotURL(image.src);
-      console.log(image.src);
-    } else {
-      console.error("Canvas reference is not yet available.");
+      setSnapshotURL(canvasRef.current.toDataURL("image/png"));
     }
   };
-  // Function to reset the snapshot URL
-  const resetSnapshot = () => {
-    setSnapshotURL(null);
-  };
+  const resetSnapshot = () => setSnapshotURL(null);
 
-  const [image, setImage] = useState(null);
-  const [processedImage, setProcessedImage] = useState(null);
-  const [recognizedText, setRecognizedText] = useState("");
-  const [translatedText, setTranslatedText] = useState("");
+  // Image Upload & Processing
+  const [image, setImage] = useState<File | null>(null);
+  const [processedImage, setProcessedImage] = useState<string | null>(null);
+  const [recognizedText, setRecognizedText] = useState<string>("");
+  const [translatedText, setTranslatedText] = useState<string>("");
 
-  const handleImageChange = (e) => {
-    setImage(e.target.files[0]);
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) setImage(e.target.files[0]);
   };
 
   const handleSubmit = async () => {
+    if (!image) return;
     const formData = new FormData();
     formData.append("image", image);
-    console.log(image);
 
     try {
       const response = await axios.post(
-        "http://localhost:5001/recognize_text",
+        "https://collab-board-2.onrender.com/recognize_text",
         formData,
-        {
-          responseType: "arraybuffer",
-        }
+        { responseType: "json" }
       );
 
-      // Set processed image
-      const processedImageBlob = new Blob([response.data], {
-        type: "image/png",
-      });
-      const processedImageUrl = URL.createObjectURL(processedImageBlob);
-      setProcessedImage(processedImageUrl);
-      const responseData = await response.json();
-      console.log(responseData.recognizedText);
-      console.log(responseData.recognizedText);
-      setRecognizedText(responseData.recognizedText);
-      setTranslatedText(responseData.translatedText);
+      const { recognizedText, translatedText } = response.data;
+      setRecognizedText(recognizedText);
+      setTranslatedText(translatedText);
+      console.log("Recognized:", recognizedText, "Translated:", translatedText);
     } catch (error) {
-      console.error("Er ror:", error);
+      console.error("Error processing image:", error);
     }
   };
 
   return (
-    <>
+    <div className="flex flex-col items-center">
       <canvas
         ref={canvasRef}
         width={windowSize[0] > 600 ? 1200 : 900}
@@ -210,72 +150,46 @@ const Board: React.FC<MyBoard> = (props) => {
         style={{ backgroundColor: "black" }}
         className="rounded-[4rem]"
       />
-      <div className="flex flex-row items-center justify-center gap-3">
-        <button
-          onClick={takeSnapshot}
-          className="bg-green-600 rounded-lg py-2 px-3 text-white mt-6 mb-6"
-        >
+      <div className="flex flex-row items-center justify-center gap-3 mt-6">
+        <button onClick={takeSnapshot} className="bg-green-600 rounded-lg py-2 px-3 text-white">
           Take Snapshot
         </button>
         {snapshotURL && (
-          <div>
-            <a
-              className="bg-green-600 rounded-lg py-2 px-3 text-white mt-6"
-              href={snapshotURL}
-              download={`CanvasSnapshot${CollabID}`}
-            >
-              Download Snapshot
-            </a>
-          </div>
+          <a href={snapshotURL} download={`CanvasSnapshot_${CollabID}`} className="bg-green-600 rounded-lg py-2 px-3 text-white">
+            Download Snapshot
+          </a>
         )}
-        <div>
-          <input
-            type="file"
-            name="file-input"
-            id="file-input"
-            className="file-input__input"
-            onChange={handleImageChange}
-          />
-          <label class="file-input__label" for="file-input">
-            <svg
-              aria-hidden="true"
-              focusable="false"
-              data-prefix="fas"
-              data-icon="upload"
-              class="svg-inline--fa fa-upload fa-w-16"
-              role="img"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 512 512"
-            >
-              <path
-                fill="currentColor"
-                d="M296 384h-80c-13.3 0-24-10.7-24-24V192h-87.7c-17.8 0-26.7-21.5-14.1-34.1L242.3 5.7c7.5-7.5 19.8-7.5 27.3 0l152.2 152.2c12.6 12.6 3.7 34.1-14.1 34.1H320v168c0 13.3-10.7 24-24 24zm216-8v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h136v8c0 30.9 25.1 56 56 56h80c30.9 0 56-25.1 56-56v-8h136c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"
-              ></path>
-            </svg>
-            <span>Upload file</span>
-          </label>
-          <button
-            className="bg-green-600 rounded-lg py-2 px-3 text-white mt-6 mb-6 ml-3"
-            onClick={handleSubmit}
-          >
-            Process Image
-          </button>
-          {processedImage && <img src={processedImage} alt="Processed Image" />}
-          {recognizedText && (
-            <div>
-              <h2>Recognized Text:</h2>
-              <p>{recognizedText}</p>
-            </div>
-          )}
-          {translatedText && (
-            <div>
-              <h2>Translated Text:</h2>
-              <p>{translatedText}</p>
-            </div>
-          )}
-        </div>
       </div>
-    </>
+
+      {/* Image Upload & Processing */}
+      <div className="mt-6 flex flex-col items-center">
+        <input type="file" onChange={handleImageChange} className="mb-4" />
+        <button onClick={handleSubmit} className="bg-blue-600 rounded-lg py-2 px-3 text-white">
+          Process Image
+        </button>
+      </div>
+
+      {processedImage && (
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold">Processed Image:</h3>
+          <img src={processedImage} alt="Processed" className="rounded-lg mt-2" />
+        </div>
+      )}
+
+      {recognizedText && (
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold">Recognized Text:</h3>
+          <p className="bg-gray-200 p-2 rounded">{recognizedText}</p>
+        </div>
+      )}
+
+      {translatedText && (
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold">Translated Text:</h3>
+          <p className="bg-gray-200 p-2 rounded">{translatedText}</p>
+        </div>
+      )}
+    </div>
   );
 };
 
